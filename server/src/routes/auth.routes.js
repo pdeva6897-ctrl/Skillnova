@@ -12,6 +12,8 @@ import { config } from '../config/index.js';
 
 const router = Router();
 
+// Rate limit: 10 login attempts per 15-minute window.
+// standardHeaders: true sends RateLimit-* headers per IETF draft-ietf-httpapi-ratelimit-headers.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: config.rateLimit.authMax,
