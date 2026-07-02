@@ -39,7 +39,17 @@ export const chat = asyncHandler(async (req, res) => {
     data: { sessionId: session.id, role: 'user', content: message },
   });
 
-  const result = await chatCompletion({ user: req.user, history, userMessage: message });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  let result;
+  try {
+    result = await Promise.race([
+      chatCompletion({ user: req.user, history, userMessage: message }),
+      new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('AI request timed out')))),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
   const assistantMsg = await prisma.chatMessage.create({
     data: {
       sessionId: session.id,
