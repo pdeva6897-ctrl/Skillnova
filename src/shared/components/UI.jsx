@@ -4,6 +4,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, X, CheckSquare } from "lucide-react";
+import { useEffect, useRef, useCallback } from "react";
 
 const MotionDiv = motion.div;
 
@@ -148,24 +149,58 @@ export const Input = ({ label, icon: Icon, error, ...props }) => (
 );
 
 /* ── Modal ────────────────────────────────────── */
-export const Modal = ({ isOpen, onClose, title, children, footer }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm"
-        />
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
+export const Modal = ({ isOpen, onClose, title, children, footer }) => {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const trapFocus = (e) => {
+      if (e.key !== 'Tab') return;
+      const modal = modalRef.current;
+      if (!modal) return;
+      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    const handleEscape = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', trapFocus);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', trapFocus);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
-          >
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm"
+          />
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              ref={modalRef}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-label={title}
+            >
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-900">{title}</h3>
               <button 
@@ -189,4 +224,5 @@ export const Modal = ({ isOpen, onClose, title, children, footer }) => (
       </>
     )}
   </AnimatePresence>
-);
+  );
+};
