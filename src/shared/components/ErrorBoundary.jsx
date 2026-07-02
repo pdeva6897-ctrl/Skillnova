@@ -5,7 +5,7 @@ import { Component } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export class ErrorBoundary extends Component {
-  state = { error: null, info: null };
+  state = { error: null, info: null, retryCount: 0 };
 
   static getDerivedStateFromError(error) {
     return { error };
@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component {
     console.error('ErrorBoundary caught:', error, info);
   }
 
-  reset = () => this.setState({ error: null, info: null });
+  reset = () => this.setState((s) => ({ error: null, info: null, retryCount: s.retryCount + 1 }));
 
   render() {
     if (this.state.error) {
