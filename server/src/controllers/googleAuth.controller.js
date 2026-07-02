@@ -100,10 +100,17 @@ export const callback = asyncHandler(async (req, res) => {
   const { code, state, error: googleError } = req.query;
 
   if (googleError) {
-    return res.redirect(`${config.appUrl}/login?error=${encodeURIComponent(googleError)}`);
+    const errorMessages = {
+      access_denied: 'Google sign-in was denied. You may have cancelled the login or need to grant the required permissions.',
+      invalid_request: 'The OAuth request was malformed. Please try signing in again from the beginning.',
+      server_error: 'Google temporarily experienced an error. Please wait a moment and try again.',
+      temporarily_unavailable: 'Google is temporarily unavailable. Please try again in a few minutes.',
+    };
+    const msg = errorMessages[googleError] || `Google returned an error: ${googleError}. Please try again.`;
+    return res.redirect(`${config.appUrl}/login?error=${encodeURIComponent(msg)}`);
   }
   if (!code || !state) {
-    return res.redirect(`${config.appUrl}/login?error=missing_code`);
+    return res.redirect(`${config.appUrl}/login?error=Missing OAuth authorization code. The redirect from Google may have been incomplete. Please try signing in again.`);
   }
 
   // Verify state token
@@ -111,7 +118,7 @@ export const callback = asyncHandler(async (req, res) => {
   try {
     statePayload = verifyOAuthState(state);
   } catch {
-    return res.redirect(`${config.appUrl}/login?error=invalid_state`);
+    return res.redirect(`${config.appUrl}/login?error=The OAuth state token is invalid or expired. This can happen if the sign-in process took too long. Please try signing in again.`);
   }
 
   const returnTo = statePayload.returnTo || '/';
@@ -122,13 +129,16 @@ export const callback = asyncHandler(async (req, res) => {
     profile = await exchangeCodeForProfile(code);
   } catch (err) {
     logger.error({ err }, 'google:exchange-failed');
-    return res.redirect(`${config.appUrl}/login?error=exchange_failed`);
+    const exchangeMsg = err.message?.includes('invalid_grant')
+      ? 'The authorization code has expired or was already used. Please try signing in again.'
+      : `Failed to exchange authorization code with Google: ${err.message || 'unknown error'}. Please try again.`;
+    return res.redirect(`${config.appUrl}/login?error=${encodeURIComponent(exchangeMsg)}`);
   }
 
   // Reject unverified emails at trust boundary
   if (!profile.emailVerified) {
     logger.warn({ email: profile.email }, 'google:email-not-verified');
-    return res.redirect(`${config.appUrl}/login?error=email_not_verified`);
+    return res.redirect(`${config.appUrl}/login?error=${encodeURIComponent('Your Google email address is not verified. Please verify your email in your Google account settings and try again.')}`);
   }
 
   // Find user by googleId first, then by email (account linking)
@@ -151,7 +161,7 @@ export const callback = asyncHandler(async (req, res) => {
 
   if (!user) {
     return res.redirect(
-      `${config.appUrl}/login?error=no_account_match`
+      `${config.appUrl}/login?error=${encodeURIComponent('No account found matching your Google email. Please sign up first or contact support if you believe this is an error.')}`
     );
   }
 
