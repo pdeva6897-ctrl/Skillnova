@@ -20,6 +20,7 @@ export async function audit({
       ip = ip ?? req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ?? req.ip;
       userAgent = userAgent ?? req.headers?.['user-agent'];
     }
+    const [actionCategory] = action.split('.');
     const entry = await prisma.auditLog.create({
       data: {
         userId: userId ?? null,
@@ -29,6 +30,8 @@ export async function audit({
         meta: meta ?? undefined,
         ip,
         userAgent,
+        resourceType: resource,
+        actionCategory,
       },
     });
     getIO()?.to('role:SUPER_ADMIN').to('role:ADMIN').emit('audit:new', entry);
