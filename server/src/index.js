@@ -5,7 +5,7 @@ import http from 'node:http';
 import { config } from './config/index.js';
 import app from './app.js';
 import { connectDB, disconnectDB } from './utils/prisma.js';
-import { connectRedis } from './utils/redis.js';
+import { connectRedis, redis } from './utils/redis.js';
 import { createSocketServer } from './sockets/index.js';
 import { logger } from './utils/logger.js';
 
@@ -27,6 +27,7 @@ async function bootstrap() {
     logger.info(`Received ${signal}, shutting down gracefully…`);
     httpServer.close(async (err) => {
       if (err) logger.error({ err }, 'shutdown:http-close-failed');
+      await redis.disconnect?.();
       await disconnectDB().catch(() => {});
       process.exit(err ? 1 : 0);
     });
