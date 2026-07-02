@@ -50,6 +50,7 @@ async function bootstrap() {
     // 2. Wait briefly for in-flight requests to drain, then close resources
     setTimeout(async () => {
       try {
+        await redis.disconnect?.();
         await disconnectDB();
         logger.info('Database connection closed');
       } catch (err) {
