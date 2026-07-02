@@ -36,13 +36,28 @@ async function bootstrap() {
   // Graceful shutdown
   const shutdown = async (signal) => {
     logger.info(`Received ${signal}, shutting down gracefully…`);
-    httpServer.close(async (err) => {
-      if (err) logger.error({ err }, 'shutdown:http-close-failed');
-      await redis.disconnect?.();
-      await disconnectDB().catch(() => {});
-      process.exit(err ? 1 : 0);
+
+    // 1. Stop accepting new connections
+    httpServer.close(() => {
+      logger.info('HTTP server stopped accepting new connections');
     });
-    setTimeout(() => process.exit(1), 10_000).unref();
+
+    // 2. Wait briefly for in-flight requests to drain, then close resources
+    setTimeout(async () => {
+      try {
+        await disconnectDB();
+        logger.info('Database connection closed');
+      } catch (err) {
+        logger.error({ err }, 'Error closing database connection');
+      }
+      process.exit(0);
+    }, 5_000);
+
+    // 3. Force exit if shutdown takes too long
+    setTimeout(() => {
+      logger.error('Shutdown timed out, forcing exit');
+      process.exit(1);
+    }, 10_000).unref();
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
