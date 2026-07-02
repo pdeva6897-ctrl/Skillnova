@@ -7,7 +7,6 @@
 // ════════════════════════════════════════════════════════════
 import { redis } from './redis.js';
 import { lru } from './lru.js';
-import { size } from './lru.js';
 
 // L2 (distributed) fallback for when LRU is cold — short TTL only,
 // used to backfill LRU without blocking on Redis on the hot path.
@@ -87,6 +86,9 @@ export const cache = {
     const fresh = await fetcher();
     await this.set(key, fresh, ttl);
     return { hit: false, value: fresh };
+  },
+  stats() {
+    return { l1Size: lru.size(), l2Size: l2Fallback.size };
   },
 };
 
