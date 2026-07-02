@@ -7,6 +7,7 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details;
     this.name = 'ApiError';
+    this.timestamp = new Date().toISOString();
   }
 
   static badRequest(msg = 'Bad request', details) {
@@ -32,6 +33,21 @@ export class ApiError extends Error {
   }
   static internal(msg = 'Internal server error') {
     return new ApiError(500, msg);
+  }
+  static payloadTooLarge(msg = 'Payload too large') {
+    return new ApiError(413, msg);
+  }
+  static unsupportedMediaType(msg = 'Unsupported media type') {
+    return new ApiError(415, msg);
+  }
+
+  toJSON() {
+    return {
+      status: this.status,
+      message: this.message,
+      details: this.details,
+      timestamp: this.timestamp,
+    };
   }
 }
 
